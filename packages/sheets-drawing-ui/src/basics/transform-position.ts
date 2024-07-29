@@ -16,7 +16,7 @@
 
 import type { Nullable } from '@univerjs/core';
 import type { ITransformState } from '@univerjs/drawing';
-import { precisionTo } from '@univerjs/engine-render';
+import { precisionTo, Scene, SHEET_VIEWPORT_KEY, SpreadsheetSkeleton } from '@univerjs/engine-render';
 import type { ISheetDrawingPosition } from '@univerjs/sheets-drawing';
 import { attachRangeWithCoord, type ISheetSelectionRenderService, type SheetSkeletonManagerService } from '@univerjs/sheets-ui';
 
@@ -91,8 +91,20 @@ export function drawingPositionToTransform(
 // use transform and originSize convert to  ISheetDrawingPosition
 export function transformToDrawingPosition(transform: ITransformState, selectionRenderService: ISheetSelectionRenderService): Nullable<ISheetDrawingPosition> {
     const { left = 0, top = 0, width = 0, height = 0, flipY = false, flipX = false, angle = 0, skewX = 0, skewY = 0 } = transform;
+    let startSelectionCell = selectionRenderService.getSelectionCellByPosition(left, top);
+    let endSelectionCell = selectionRenderService.getSelectionCellByPosition(left + width, top + height);
 
-    const startSelectionCell = selectionRenderService.getSelectionCellByPosition(left, top);
+    const skeleton = (selectionRenderService as any)._skeleton as  Nullable<SpreadsheetSkeleton>;
+    const scene = (selectionRenderService as any)._scene as Nullable<Scene>;
+    if (skeleton && scene) {
+        // left、top 已经包含了滚动的高度，此处减去滚动的高度(内部计算时会加上滚动的高度)
+        const scrollXY = scene.getScrollXY(scene.getViewport(SHEET_VIEWPORT_KEY.VIEW_MAIN)!);
+        const { scaleX, scaleY } = scene.getAncestorScale();
+        const y = top - (scrollXY.y * scaleY);
+        const x = left - (scrollXY.x * scaleX);
+        startSelectionCell = selectionRenderService.getSelectionCellByPosition(x, y);
+        endSelectionCell = selectionRenderService.getSelectionCellByPosition(x + width, y + height);
+    }
 
     if (startSelectionCell == null) {
         return;
@@ -105,7 +117,6 @@ export function transformToDrawingPosition(transform: ITransformState, selection
         rowOffset: precisionTo(top - startSelectionCell.startY, 1),
     };
 
-    const endSelectionCell = selectionRenderService.getSelectionCellByPosition(left + width, top + height);
 
     if (endSelectionCell == null) {
         return;

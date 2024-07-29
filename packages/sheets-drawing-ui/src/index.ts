@@ -35,3 +35,5 @@ export { SidebarSheetDrawingOperation } from './commands/operations/open-drawing
 
 export { IMAGE_MENU_ID } from './views/menu/image.menu';
 // #endregion
+
+export { drawingPositionToTransform } from './basics/transform-position';
